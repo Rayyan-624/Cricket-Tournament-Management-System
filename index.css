@@ -1,0 +1,198 @@
+/* General Styles */
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background-color: #f2f7fb;
+  color: #0b2545;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(90deg, #005f73, #0a9396);
+  height: 75px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  position: static;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  width: 115px;
+  height: 115px;
+  font-size: large;
+  margin-right: 10px;
+}
+
+.logo-text h1 {
+  margin: 0;
+  font-size: 1.8em;
+}
+
+.logo-text {
+    color: #fff;
+  font-size: 1.3em;
+  opacity: 0.9;
+  font-weight: bolder;
+}
+
+.nav a {
+  text-decoration: none;
+  color: white;
+  margin-left: 20px;
+  font-weight: 600;
+  transition: transform 0.2s, background 0.3s;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 20px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #ee9b00;
+  color: #fff;
+}
+
+.btn-secondary {
+  background-color: rgb(186, 60, 60);
+  color: #003049;
+}
+
+.btn-large {
+  padding: 12px 30px;
+  font-size: 1.1em;
+  background-color: #ee9b00;
+}
+
+.btn-outline {
+  color: #fff;
+}
+
+.btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* Hero Section */
+.hero {
+  position: relative;
+  background-image: url("https://static.vecteezy.com/system/resources/previews/003/058/382/non_2x/cricket-horizontal-banner-batsman-championship-background-free-vector.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+}
+
+.hero-buttons {
+    margin-top: 35px;
+}
+
+.hero .overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+}
+
+.hero-content h4 {
+  font-size: 2.5em;
+  margin-bottom: 15px;
+}
+
+.hero-content p {
+  font-size: 0.95em;
+  margin-bottom: 25px;
+  font-weight: bold;
+}
+
+/* Features Section */
+.features {
+  padding: 50px 10px;
+  background-color: #e0fbfc;
+  text-align: center;
+}
+
+.features h2 {
+  margin-top: 0%;
+  font-size: 2.2em;
+  margin-bottom: 40px;
+  color: #001219;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 30px;
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+}
+
+.feature-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.feature-card img {
+  width: 70px;
+  margin-bottom: 15px;
+}
+
+.feature-card h3 {
+  color: #0a9396;
+  margin-bottom: 10px;
+}
+
+.feature-card p {
+  font-size: 0.95em;
+  color: #333;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+/* Footer */
+.footer {
+  background-color: #0a9396;
+  color: white;
+  text-align: center;
+  padding: 15px 0;
+  margin-top: auto;
+  font-size: 0.95em;
+  font-weight: bold;
+}

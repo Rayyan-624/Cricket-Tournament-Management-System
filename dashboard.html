@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CTMS</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="nav-brand">
+                    <img src="/dashboard5.png" alt="CTMS Logo">
+                    CTMS
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="dashboard.html" class="nav-link active">
+                        <img src="/dashboard2.png" alt="Dashboard">
+                        Dashboard
+                    </a></li>
+                    <li><a href="tournaments.html" class="nav-link">
+                        <img src="/dashboard1.png" alt="Tournaments">
+                        Tournaments
+                    </a></li>
+                    <li><a href="teams.html" class="nav-link">
+                        <img src="/dashboard4.png" alt="Teams">
+                        Teams
+                    </a></li>
+                    <li><a href="matches.html" class="nav-link">
+                        <img src="/dashboard6.png">
+                        Matches
+                    </a></li>
+                    <li><a href="statistics.html" class="nav-link">
+                        <img src="/dashboard8.png" alt="Statistics">
+                        Statistics
+                    </a></li>
+                    <li><a href="index.html" class="nav-link logout-btn" onclick="logout()">
+                        <img src="/dashboard9.png" alt="Logout">
+                        Logout
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="container dashboard-content">
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <h1 id="welcome-message">Welcome, Admin!</h1>
+            <p>Manage cricket tournaments with live analytics</p>
+            <div class="hero-image"></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <img src="/stats1.png" alt="Tournament">
+                </div>
+                <div class="stat-info">
+                    <h3>5</h3>
+                    <p>Active Tournaments</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <img src="/stats2.png" alt="Teams">
+                </div>
+                <div class="stat-info">
+                    <h3>24</h3>
+                    <p>Total Teams</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <img src="/stats3.png" alt="Live">
+                </div>
+                <div class="stat-info">
+                    <h3>8</h3>
+                    <p>Live Matches</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <img src="/stats4.png" alt="Matches">
+                </div>
+                <div class="stat-info">
+                    <h3>156</h3>
+                    <p>Matches Played</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Tournaments -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <img src="/tournaments1.png" alt="Tournaments">
+                    Recent Tournaments
+                </h2>
+                <a href="tournaments.html" class="btn btn-outline">View All</a>
+            </div>
+            <div class="tournaments-list">
+                <div class="tournament-item">
+                    <div class="tournament-info">
+                        <h3>
+                            <img src="/tournaments2.png" alt="PSL">
+                            PSL 2025
+                        </h3>
+                        <p>Feb 15 - Mar 20, 2025 • 6 Teams</p>
+                        <span class="status-badge status-ongoing">Ongoing</span>
+                    </div>
+                    <div class="tournament-actions">
+                        <a href="tournament-detail.html" class="btn btn-primary">Manage</a>
+                    </div>
+                </div>
+                <div class="tournament-item">
+                    <div class="tournament-info">
+                        <h3>
+                            <img src="/dashboard3.png">
+                            University Cup 2024
+                        </h3>
+                        <p>Jan 10 - Feb 5, 2024 • 8 Teams</p>
+                        <span class="status-badge status-completed">Completed</span>
+                    </div>
+                    <div class="tournament-actions">
+                        <a href="tournament-detail.html" class="btn btn-primary">View</a>
+                    </div>
+                </div>
+                <div class="tournament-item">
+                    <div class="tournament-info">
+                        <h3>
+                            <img src="/tournaments3.png" alt="T20">
+                            T20 Champions League
+                        </h3>
+                        <p>Mar 1 - Apr 15, 2024 • 10 Teams</p>
+                        <span class="status-badge status-ongoing">Ongoing</span>
+                    </div>
+                    <div class="tournament-actions">
+                        <a href="tournament-detail.html" class="btn btn-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Matches -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%237CD0DF' d='M3 9h14V7H3v2zm0 4h14v-2H3v2zm0 4h14v-2H3v2zm16 0h2v-2h-2v2zm0-10v2h2V7h-2zm0 6h2v-2h-2v2z'/></svg>" alt="Matches">
+                    Upcoming Matches
+                </h2>
+                <a href="matches.html" class="btn btn-outline">View All</a>
+            </div>
+            <div class="matches-list">
+                <div class="match-card">
+                    <div class="match-teams">
+                        <div class="team">
+                            <div class="team-logo1"></div>
+                            <span class="team-name">Karachi Kings</span>
+                        </div>
+                        <div class="vs1">VS</div>
+                        <div class="team">
+                            <div class="team-logo2"></div>
+                            <span class="team-name">Lahore Qalandars</span>
+                        </div>
+                    </div>
+                    <div class="match-info">
+                        <p>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23E0F7FA' d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>" alt="Location">
+                            National Stadium, Karachi
+                        </p>
+                        <p>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23E0F7FA' d='M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'/></svg>" alt="Time">
+                            Today, 7:00 PM
+                        </p>
+                    </div>
+                    <div class="match-actions">
+                        <a href="live-score.html" class="btn btn-secondary">Start Match</a>
+                    </div>
+                </div>
+                <div class="match-card">
+                    <div class="match-teams">
+                        <div class="team">
+                            <div class="team-logo3"></div>
+                            <span class="team-name">Islamabad United</span>
+                        </div>
+                        <div class="vs2">VS</div>
+                        <div class="team">
+                            <div class="team-logo4"></div>
+                            <span class="team-name">Peshawar Zalmi</span>
+                        </div>
+                    </div>
+                    <div class="match-info">
+                        <p>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23E0F7FA' d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>" alt="Location">
+                            Gaddafi Stadium, Lahore
+                        </p>
+                        <p>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23E0F7FA' d='M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'/></svg>" alt="Time">
+                            Tomorrow, 3:00 PM
+                        </p>
+                    </div>
+                    <div class="match-actions">
+                        <a href="live-score.html" class="btn btn-secondary">Start Match</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cricket Animation -->
+    <div class="cricket-animation">
+        <div class="bat"></div>
+        <div class="ball"></div>
+    </div>
+
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="floating-element">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='60' height='60'><circle cx='12' cy='12' r='10' fill='%237CD0DF' opacity='0.1'/></svg>" alt="Cricket Ball">
+        </div>
+        <div class="floating-element">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='50' height='50'><rect x='2' y='6' width='20' height='12' rx='2' fill='%2394d2bd' opacity='0.1'/></svg>" alt="Cricket Bat">
+        </div>
+        <div class="floating-element">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='70' height='70'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z' fill='%23003366' opacity='0.1'/></svg>" alt="Trophy">
+        </div>
+        <div class="floating-element">
+            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='40' height='40'><path d='M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z' fill='%23002244' opacity='0.1'/></svg>" alt="Calendar">
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

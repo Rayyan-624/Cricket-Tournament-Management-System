@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTMS Admin Login</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo-section">
+                <img src="/login.png" alt="CTMS Logo" class="logo">
+                <h1>Cricket Tournament Management System</h1>
+                <p class="tagline">Manage Matches • Teams • Tournaments</p>
+            </div>
+
+            <form class="login-form" id="loginForm">
+                <h2>Admin Login</h2>
+
+                <label for="username">Username or Email</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username or email" required>
+
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+
+                <button type="submit">Login</button>
+
+                <p class="switch">
+                    Don't have an account? 
+                    <a href="register.html">Register here</a>
+                </p>
+            </form>
+
+            <p id="error-msg" class="error"></p>
+        </div>
+    </div>
+
+    <footer>
+        <p>🏏 © 2025 CTMS | Developed by Ali, Rayyan & Abuzar</p>
+    </footer>
+
+    <script src="login.js"></script>
+</body>
+</html>

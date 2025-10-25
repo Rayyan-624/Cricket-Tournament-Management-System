@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournaments - CTMS</title>
+    <link rel="stylesheet" href="tournaments.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="nav-brand"><img src="/tournament-logo2.png" alt="">CTMS Tournaments</div>
+                <ul class="nav-menu">
+                    <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                    <li><a href="tournaments.html" class="nav-link active">Tournaments</a></li>
+                    <li><a href="teams.html" class="nav-link">Teams</a></li>
+                    <li><a href="matches.html" class="nav-link">Matches</a></li>
+                    <li><a href="statistics.html" class="nav-link">Statistics</a></li>
+                    <li><a href="index.html" class="nav-link" onclick="logout()">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Tournament Management</h1>
+            <p>Create and manage cricket tournaments with vibrant style</p>
+            <button class="btn btn-primary" onclick="openCreateTournamentModal()">+ Create Tournament</button>
+        </div>
+
+        <!-- Tournaments Grid -->
+        <div class="tournaments-grid" id="tournamentsContainer">
+            <!-- Tournament cards will be dynamically inserted here -->
+        </div>
+
+        <!-- Empty State (Initially Hidden) -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <h3>No Tournaments Yet</h3>
+            <p>Get started by creating your first tournament!</p>
+            <button class="btn btn-primary" onclick="openCreateTournamentModal()">Create Tournament</button>
+        </div>
+    </div>
+
+    <!-- Create Tournament Modal -->
+    <div id="createTournamentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Tournament</h2>
+                <span class="close" onclick="closeCreateTournamentModal()">&times;</span>
+            </div>
+            <form class="modal-form" id="tournamentForm">
+                <div class="form-group">
+                    <label class="form-label">Tournament Name</label>
+                    <input type="text" class="form-control" id="tournamentName" placeholder="Enter tournament name" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="location" placeholder="Enter location" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number of Teams</label>
+                    <input type="number" class="form-control" id="teamsCount" min="2" max="20" value="8" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number of Matches</label>
+                    <input type="number" class="form-control" id="matchesCount" min="1" max="200" value="15" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" id="status">
+                        <option value="upcoming">Upcoming</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeCreateTournamentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Tournament</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Tournament Modal -->
+    <div id="editTournamentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Tournament</h2>
+                <span class="close" onclick="closeEditTournamentModal()">&times;</span>
+            </div>
+            <form class="modal-form" id="editTournamentForm">
+                <input type="hidden" id="editTournamentId">
+                <div class="form-group">
+                    <label class="form-label">Tournament Name</label>
+                    <input type="text" class="form-control" id="editTournamentName" placeholder="Enter tournament name" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="editStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="editEndDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" id="editLocation" placeholder="Enter location" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number of Teams</label>
+                    <input type="number" class="form-control" id="editTeamsCount" min="2" max="20" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number of Matches</label>
+                    <input type="number" class="form-control" id="editMatchesCount" min="1" max="200" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" id="editStatus">
+                        <option value="upcoming">Upcoming</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeEditTournamentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Tournament</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="tournaments.js"></script>
+</body>
+</html>
