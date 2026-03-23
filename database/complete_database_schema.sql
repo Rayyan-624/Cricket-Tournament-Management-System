@@ -225,9 +225,6 @@ CREATE INDEX idx_matches_date ON Matches(match_date);
 CREATE INDEX idx_player_stats ON Player_Statistics(player_id);
 CREATE INDEX idx_points_table ON Points_Table(tournament_id, points DESC);
 
--- Add status column to Matches table if it doesn't exist
-ALTER TABLE Matches ADD COLUMN match_status VARCHAR(20) DEFAULT 'scheduled';
-
 SELECT * FROM USERS;
 
 -- Live Scores Table
@@ -312,4 +309,122 @@ CREATE TABLE IF NOT EXISTS BowlingScorecard (
     FOREIGN KEY (match_id) REFERENCES Matches(match_id),
     FOREIGN KEY (player_id) REFERENCES Players(player_id)
 );
-SELECT * FROM MATCH_STATISTICS;
+
+-- 1. Trigger to update match status based on match_date
+DELIMITER $$
+
+CREATE TRIGGER UpdateMatchStatusOnDate
+BEFORE UPDATE ON Matches
+FOR EACH ROW
+BEGIN
+    DECLARE current_time DATETIME;
+    SET current_time = NOW();
+    
+    -- Only update if match_date is changed or status is scheduled
+    IF (NEW.match_date IS NOT NULL AND OLD.match_status = 'scheduled') THEN
+        -- If match date is in future, keep as scheduled
+        IF (NEW.match_date > current_time) THEN
+            SET NEW.match_status = 'scheduled';
+        -- If match date is in past and no winner, mark as abandoned
+        ELSEIF (NEW.match_date < current_time AND NEW.winner_team_id IS NULL) THEN
+            SET NEW.match_status = 'abandoned';
+        -- If match date is today, mark as ongoing
+        ELSEIF (DATE(NEW.match_date) = DATE(current_time)) THEN
+            SET NEW.match_status = 'ongoing';
+        END IF;
+    END IF;
+END$$
+
+-- 2. Trigger to update tournament status when all matches are completed
+CREATE TRIGGER UpdateTournamentStatusOnMatchCompletion
+AFTER UPDATE ON Matches
+FOR EACH ROW
+BEGIN
+    DECLARE total_matches INT;
+    DECLARE completed_matches INT;
+    
+    -- Only run when match status changes to 'completed'
+    IF (OLD.match_status != 'completed' AND NEW.match_status = 'completed') THEN
+        -- Get total matches in this tournament
+        SELECT COUNT(*) INTO total_matches 
+        FROM Matches 
+        WHERE tournament_id = NEW.tournament_id;
+        
+        -- Get completed matches in this tournament
+        SELECT COUNT(*) INTO completed_matches 
+        FROM Matches 
+        WHERE tournament_id = NEW.tournament_id 
+        AND match_status = 'completed';
+        
+        -- If all matches are completed, update tournament status
+        IF (total_matches > 0 AND total_matches = completed_matches) THEN
+            UPDATE Tournaments 
+            SET status = 'completed' 
+            WHERE tournament_id = NEW.tournament_id;
+        ELSE
+            -- If tournament has started but not all matches completed
+            UPDATE Tournaments 
+            SET status = 'ongoing' 
+            WHERE tournament_id = NEW.tournament_id 
+            AND status = 'upcoming';
+        END IF;
+    END IF;
+END$$
+
+-- 3. Trigger to prevent match date before tournament start date
+CREATE TRIGGER ValidateMatchDate
+BEFORE INSERT ON Matches
+FOR EACH ROW
+BEGIN
+    DECLARE tournament_start DATE;
+    DECLARE tournament_end DATE;
+    
+    -- Get tournament dates
+    SELECT start_date, end_date INTO tournament_start, tournament_end
+    FROM Tournaments 
+    WHERE tournament_id = NEW.tournament_id;
+    
+    -- Validate match date against tournament dates
+    IF (NEW.match_date IS NOT NULL) THEN
+        IF (tournament_start IS NOT NULL AND DATE(NEW.match_date) < tournament_start) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Match date cannot be before tournament start date';
+        END IF;
+        
+        IF (tournament_end IS NOT NULL AND DATE(NEW.match_date) > tournament_end) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Match date cannot be after tournament end date';
+        END IF;
+    END IF;
+END$$
+
+-- 4. Trigger to update tournament status based on dates
+CREATE TRIGGER UpdateTournamentStatusOnDate
+BEFORE UPDATE ON Tournaments
+FOR EACH ROW
+BEGIN
+    DECLARE current_date DATE;
+    SET current_date = CURDATE();
+    
+    -- Only run if dates are changed
+    IF (NEW.start_date IS NOT NULL AND NEW.end_date IS NOT NULL) THEN
+        -- Tournament is upcoming if start date is in future
+        IF (NEW.start_date > current_date) THEN
+            SET NEW.status = 'upcoming';
+        -- Tournament is ongoing if current date is between start and end dates
+        ELSEIF (current_date BETWEEN NEW.start_date AND NEW.end_date) THEN
+            SET NEW.status = 'ongoing';
+        -- Tournament is completed if end date is in past
+        ELSEIF (NEW.end_date < current_date) THEN
+            SET NEW.status = 'completed';
+        END IF;
+    END IF;
+END$$
+
+ALTER TABLE Teams 
+ADD COLUMN matches_played INT DEFAULT 0,
+ADD COLUMN matches_won INT DEFAULT 0,
+ADD COLUMN matches_lost INT DEFAULT 0,
+ADD COLUMN matches_tied INT DEFAULT 0,
+ADD COLUMN net_run_rate DECIMAL(5,2) DEFAULT 0;
+SELECT * FROM MATCHES;

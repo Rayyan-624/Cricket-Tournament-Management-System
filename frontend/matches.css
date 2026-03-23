@@ -223,6 +223,28 @@ body {
     border-top: 5px solid var(--accent);
 }
 
+.match-card.completed {
+    border-left: 4px solid #27ae60;
+    background: linear-gradient(135deg, #f8fff8 0%, #f0f9f0 100%);
+}
+
+.winner-banner {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.team-score {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #2c3e50;
+    margin-top: 5px;
+}
+
 .match-card:hover {
     transform: translateY(-10px);
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);

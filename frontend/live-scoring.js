@@ -793,11 +793,16 @@ function scoreRun(runs) {
     }
     
     // Check if target is achieved in second innings
-    if (currentInnings === 2 && currentTeam.score >= matchData.target) {
-        setTimeout(() => {
-            completeMatch();
-        }, 1000);
-        return;
+    if (currentInnings === 2) {
+        const targetToBeat = matchData.target; // This is already first innings score + 1
+        
+        // If team scores MORE than or EQUAL to target, they win immediately
+        if (currentTeam.score >= targetToBeat) {
+            setTimeout(() => {
+                completeMatch();
+            }, 1000);
+            return;
+        }
     }
     
     // Check if over is completed (only count proper balls)
@@ -806,6 +811,206 @@ function scoreRun(runs) {
             endOver();
         }, 1000);
     }
+}
+
+// NEW FUNCTION: Handle match tie
+function endMatchAsTie() {
+    if (matchData.matchCompleted) return;
+    
+    matchData.matchCompleted = true;
+    matchData.winningTeam = 'Match Tied';
+    
+    // Add commentary
+    addCommentary(`🤝🏻 MATCH TIED! Both teams scored exactly ${matchData.target - 1} runs!`);
+    
+    // Show tie result interface
+    showTieResult();
+    
+    // Disable scoring controls
+    document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
+        btn.disabled = true;
+    });
+}
+
+// NEW FUNCTION: Show tie result with rematch option
+function showTieResult() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px; text-align: center; background: linear-gradient(135deg, #4A90E2 0%, #9013FE 100%); color: white;">
+            <div class="modal-header" style="background: rgba(0,0,0,0.2);">
+                <h2 style="color: white; margin: 0;">🤝🏻 Match Tied!</h2>
+            </div>
+            <div class="modal-body" style="padding: 40px 30px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">🤝</div>
+                <div style="font-size: 2.5rem; color: #FFD700; font-weight: bold; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                    MATCH TIED!
+                </div>
+                <p style="font-size: 1.8rem; margin-bottom: 25px; color: #FFFFFF; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
+                    Both teams scored exactly ${matchData.target - 1} runs!
+                </p>
+                <div style="background: rgba(255,255,255,0.2); padding: 20px; border-radius: 15px; margin-bottom: 25px; backdrop-filter: blur(10px);">
+                    <div style="font-weight: bold; margin-bottom: 15px; font-size: 1.3rem; color: #FFD700;">Final Scores</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 1.2rem;">
+                        <div style="text-align: right; font-weight: 600;">${matchData.team1.name}:</div>
+                        <div style="text-align: left;">${matchData.team1.score}/${matchData.team1.wickets}</div>
+                        <div style="text-align: right; font-weight: 600;">${matchData.team2.name}:</div>
+                        <div style="text-align: left;">${matchData.team2.score}/${matchData.team2.wickets}</div>
+                    </div>
+                </div>
+                <div class="modal-actions" style="justify-content: center; margin-top: 25px; display: flex; flex-direction: column; gap: 15px;">
+                    <button class="btn btn-primary" onclick="updateMatchAsTie()" style="padding: 15px 40px; font-size: 1.2rem; background: rgba(255,193,7,0.9); color: #8B6914; border: none; border-radius: 25px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span>✅</span> End Match (Tie) & Update
+                    </button>
+                    <button class="btn btn-primary" onclick="startRematch()" style="padding: 15px 40px; font-size: 1.2rem; background: rgba(34, 197, 94, 0.9); color: white; border: none; border-radius: 25px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span>🔄</span> Start Rematch
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// NEW FUNCTION: Update match as tie
+async function updateMatchAsTie() {
+    try {
+        const matchId = new URLSearchParams(window.location.search).get('matchId');
+        const token = localStorage.getItem('ctms_token');
+        
+        if (!matchId) {
+            alert('Match ID not found. Redirecting to matches page...');
+            window.location.href = 'matches.html';
+            return;
+        }
+        
+        // Prepare tie match data
+        const matchCompletionData = {
+            status: 'completed',
+            team1_score: matchData.team1.score,
+            team1_wickets: matchData.team1.wickets,
+            team2_score: matchData.team2.score,
+            team2_wickets: matchData.team2.wickets,
+            winner_name: 'Tie',
+            result_summary: `Match Tied - Both teams scored ${matchData.target - 1} runs`,
+            team1: matchData.team1.name,
+            team2: matchData.team2.name,
+            venue: document.getElementById('matchVenue')?.textContent || 'Unknown Venue',
+            matchType: 'group'
+        };
+        
+        console.log('📤 Sending tie match data:', matchCompletionData);
+        
+        // Show loading state on button
+        const endMatchBtn = document.querySelector('.btn-primary[onclick*="updateMatchAsTie"]');
+        if (endMatchBtn) {
+            endMatchBtn.innerHTML = '<span>⏳</span> Updating Match...';
+            endMatchBtn.disabled = true;
+        }
+        
+        // Update match
+        const response = await fetch(`http://localhost:5000/api/matches/${matchId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(matchCompletionData)
+        });
+        
+        if (response.ok) {
+            const updatedMatch = await response.json();
+            console.log('✅ Match tied successfully:', updatedMatch);
+            
+            showSuccessMessage('Match tied result saved! Redirecting...');
+            
+            setTimeout(() => {
+                window.location.href = 'matches.html';
+            }, 1500);
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Error updating tie match:', errorText);
+            showErrorMessage('Error updating match. Try regular update...');
+            
+            // Try regular PUT as fallback
+            const putResponse = await fetch(`http://localhost:5000/api/matches/${matchId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ...matchCompletionData,
+                    winner_name: null,
+                    result_summary: 'Match Tied'
+                })
+            });
+            
+            if (putResponse.ok) {
+                showSuccessMessage('Match updated as tie! Redirecting...');
+                setTimeout(() => {
+                    window.location.href = 'matches.html';
+                }, 1500);
+            } else {
+                throw new Error('Both update methods failed');
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error updating tie match:', error);
+        showErrorMessage('Error updating match. Redirecting to matches...');
+        
+        setTimeout(() => {
+            window.location.href = 'matches.html';
+        }, 3000);
+    }
+}
+
+// NEW FUNCTION: Start rematch (Super Over or new match)
+function startRematch() {
+    // Remove the modal
+    document.querySelector('.modal').remove();
+    
+    // Reset match data for rematch
+    matchData.matchCompleted = false;
+    matchData.winningTeam = '';
+    matchData.target = 0;
+    matchData.currentInnings = 1;
+    
+    // Reset team scores
+    matchData.team1.score = 0;
+    matchData.team1.wickets = 0;
+    matchData.team1.overs = 0;
+    matchData.team1.balls = 0;
+    
+    matchData.team2.score = 0;
+    matchData.team2.wickets = 0;
+    matchData.team2.overs = 0;
+    matchData.team2.balls = 0;
+    
+    // Reset other match data
+    matchData.currentOver = [];
+    matchData.batsmen = [];
+    matchData.bowler = null;
+    matchData.isFreeHit = false;
+    matchData.ballByBall = [];
+    matchData.commentary = [];
+    
+    // Swap batting order (team that batted second in tied match bats first in rematch)
+    const wasBattingFirst = matchData.team1.isBatting;
+    matchData.team1.isBatting = !wasBattingFirst;
+    matchData.team2.isBatting = wasBattingFirst;
+    
+    // Add commentary
+    addCommentary(`🔄 REMATCH STARTING! Teams will swap batting order.`);
+    
+    // Start new toss process
+    setTimeout(() => {
+        startTossProcess();
+    }, 1000);
 }
 
 // CricHeroes-style boundary animation (showing only 4 or 6) with better colors
@@ -918,11 +1123,16 @@ function addExtra(extraType) {
     updateBatsmen(); // Update batsmen for bye runs
     
     // Check if target is achieved in second innings
-    if (currentInnings === 2 && currentTeam.score >= matchData.target) {
-        setTimeout(() => {
-            completeMatch();
-        }, 1000);
-        return;
+    if (currentInnings === 2) {
+        const targetToBeat = matchData.target; // This is already first innings score + 1
+        
+        // If team scores MORE than or EQUAL to target, they win immediately
+        if (currentTeam.score >= targetToBeat) {
+            setTimeout(() => {
+                completeMatch();
+            }, 1000);
+            return;
+        }
     }
     
     // Check if over is completed (for bye/leg bye and free hit deliveries which count as balls) - FIXED
@@ -1010,14 +1220,50 @@ function takeWicket() {
     updateTeamSquads();
     updateBatsmen();
     
-    // If all wickets are taken, end innings
-    if (currentTeam.wickets >= 10) {
+    // Check for match completion in second innings
+    if (currentInnings === 2) {
+        // If team is all out
+        if (currentTeam.wickets >= 10) {
+            const targetToBeat = matchData.target; // This is first innings score + 1
+            
+            // Check if team scored LESS than target
+            if (currentTeam.score < targetToBeat - 1) {
+                // First innings team wins
+                setTimeout(() => {
+                    addCommentary(`All out! ${currentTeam.name} scored ${currentTeam.score}/${currentTeam.wickets}`);
+                    const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+                    matchData.winningTeam = firstInningsTeam.name;
+                    const margin = targetToBeat - currentTeam.score - 1;
+                    
+                    const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
+                    showMatchResult(resultText);
+                    
+                    // Disable scoring controls
+                    document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
+                        btn.disabled = true;
+                    });
+                }, 1500);
+                return;
+            }
+            // Check if team scored EQUAL to first innings score (tie)
+            else if (currentTeam.score === targetToBeat - 1) {
+                // Match is tied
+                setTimeout(() => {
+                    addCommentary(`All out! ${currentTeam.name} scored exactly ${currentTeam.score} runs!`);
+                    endMatchAsTie();
+                }, 1500);
+                return;
+            }
+        }
+    }
+    
+    // If all wickets are taken in first innings, end innings normally
+    if (currentTeam.wickets >= 10 && currentInnings === 1) {
         setTimeout(() => {
-            // FIXED: Show proper message with correct score
             addCommentary(`All out! ${currentTeam.name} scored ${currentTeam.score}/${currentTeam.wickets}`);
             endInnings();
         }, 1500);
-    } else {
+    } else if (currentTeam.wickets < 10) {
         // Select new batsman immediately
         setTimeout(() => {
             selectNewBatsman();
@@ -1393,61 +1639,132 @@ function endInnings() {
     const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
     const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
     
-    console.log(`Ending innings: Innings ${currentInnings}, ${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`); // Debug log
+    console.log(`Ending innings: Innings ${currentInnings}, ${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`);
     
     if (currentInnings === 1) {
+        // Store first innings score for target calculation
+        const firstInningsScore = battingTeam.score;
+        
         // Set target for second innings - FIXED: Target is battingTeam.score + 1
-        matchData.target = battingTeam.score + 1;
+        matchData.target = firstInningsScore + 1;
         
-        console.log(`Target set: ${matchData.target}`); // Debug log
+        console.log(`Target set: ${matchData.target}`);
+        console.log(`Team1 is batting: ${matchData.team1.isBatting}, Team2 is batting: ${matchData.team2.isBatting}`);
         
-        // Show innings ended interface
+        // Determine which team will bat second (the one that bowled first)
+        // FIXED: The bowling team (team that fielded in first innings) will bat second
+        const battingSecondTeam = bowlingTeam;
+        
+        console.log(`First innings batting team: ${battingTeam.name}`);
+        console.log(`First innings bowling team: ${bowlingTeam.name}`);
+        console.log(`Second innings batting team will be: ${battingSecondTeam.name}`);
+        console.log(`Target: ${matchData.target} runs`);
+        
+        // Show innings ended interface - FIXED: Use correct team names
         showInningsEndInterface(
             `First Innings Over!`,
             `${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`,
-            `${bowlingTeam.name} needs ${matchData.target} runs to win`
+            `${battingSecondTeam.name} needs ${matchData.target} runs to win`
         );
         
-        // After delay, switch to second innings
-        setTimeout(() => {
-            // Remove the innings end modal
-            const overlay = document.querySelector('.innings-end-overlay');
-            if (overlay) overlay.remove();
-            
-            // Switch innings
-            matchData.currentInnings = 2;
-            matchData.team1.isBatting = !matchData.team1.isBatting;
-            matchData.team2.isBatting = !matchData.team2.isBatting;
-            
-            // Reset for new innings
-            matchData.currentOver = [];
-            matchData.batsmen = [];
-            matchData.bowler = null;
-            matchData.isFreeHit = false;
-            
-            // Update UI
-            updateScoreboard();
-            
-            // Start second innings team selection
-            showTeamSelectionModal();
-        }, 3000);
+        // Add commentary
+        addCommentary(`⏹️ First innings complete! ${battingTeam.name} scored ${battingTeam.score}/${battingTeam.wickets}`);
+        addCommentary(`🎯 Target: ${battingSecondTeam.name} needs ${matchData.target} runs to win`);
         
     } else {
-        // Match completed - team batting second didn't reach target
-        matchData.matchCompleted = true;
-        const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
-        matchData.winningTeam = firstInningsTeam.name;
-        const margin = matchData.target - battingTeam.score - 1;
+        // Second innings ended manually or by all out
+        const targetToBeat = matchData.target; // This is first innings score + 1
         
-        const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
-        
-        // Show match result interface
-        showMatchResult(resultText);
-        
-        // Disable scoring controls
-        document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
-            btn.disabled = true;
-        });
+        // Check if second innings team scored LESS than target
+        if (battingTeam.score < targetToBeat - 1) {
+            // First innings team wins
+            matchData.matchCompleted = true;
+            const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+            matchData.winningTeam = firstInningsTeam.name;
+            const margin = targetToBeat - battingTeam.score - 1;
+            
+            const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
+            
+            addCommentary(`🏆 MATCH RESULT: ${resultText}`);
+            showMatchResult(resultText);
+            
+            // Disable scoring controls
+            document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
+                btn.disabled = true;
+            });
+        }
+        // Check if second innings team scored EQUAL to first innings score (tie)
+        else if (battingTeam.score === targetToBeat - 1) {
+            // Match is tied
+            endMatchAsTie();
+        }
+    }
+}
+
+// Manually end innings (button click) - FIXED
+function manualEndInnings() {
+    if (matchData.matchCompleted) {
+        alert('Match is already completed!');
+        return;
+    }
+    
+    const currentInnings = matchData.currentInnings;
+    const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
+    const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+    
+    if (currentInnings === 1) {
+        // In first innings - manually end the innings
+        if (confirm(`Are you sure you want to end ${battingTeam.name}'s innings? They have scored ${battingTeam.score}/${battingTeam.wickets}`)) {
+            // Set target for second innings
+            matchData.target = battingTeam.score + 1;
+            
+            // FIXED: Use bowlingTeam as the team that will bat second
+            const battingSecondTeam = bowlingTeam;
+            
+            // Show innings ended interface
+            showInningsEndInterface(
+                `First Innings Over!`,
+                `${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`,
+                `${battingSecondTeam.name} needs ${matchData.target} runs to win`
+            );
+            
+            // Add commentary
+            addCommentary(`⏹️ First innings ended manually! ${battingTeam.name} scores ${battingTeam.score}/${battingTeam.wickets}`);
+            addCommentary(`🎯 Target: ${battingSecondTeam.name} needs ${matchData.target} runs to win`);
+        }
+    } else {
+        // In second innings - manually end the innings
+        if (confirm(`Are you sure you want to end ${battingTeam.name}'s innings? They have scored ${battingTeam.score}/${battingTeam.wickets}`)) {
+            const targetToBeat = matchData.target; // This is first innings score + 1
+            
+            // Check if second innings team scored LESS than target
+            if (battingTeam.score < targetToBeat - 1) {
+                // First innings team wins
+                matchData.matchCompleted = true;
+                const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+                matchData.winningTeam = firstInningsTeam.name;
+                const margin = targetToBeat - battingTeam.score - 1;
+                
+                const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
+                
+                addCommentary(`🏆 MATCH RESULT: ${resultText}`);
+                showMatchResult(resultText);
+                
+                // Disable scoring controls
+                document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
+                    btn.disabled = true;
+                });
+            }
+            // Check if second innings team scored EQUAL to first innings score (tie)
+            else if (battingTeam.score === targetToBeat - 1) {
+                // Match is tied
+                endMatchAsTie();
+            }
+            // If team has already reached target, complete match (should not happen here)
+            else if (battingTeam.score >= targetToBeat) {
+                completeMatch();
+            }
+        }
     }
 }
 
@@ -1477,134 +1794,6 @@ function completeMatch() {
 
 // NEW FUNCTION: Show innings ended interface similar to toss/batsman selection
 function showInningsEndInterface(title, score, message) {
-    const overlay = document.createElement('div');
-    overlay.className = 'innings-end-overlay';
-    overlay.innerHTML = `
-        <div class="innings-end-modal">
-            <div class="modal-header">
-                <h2>${title}</h2>
-            </div>
-            <div class="modal-body" style="text-align: center; padding: 30px;">
-                <div class="score-summary" style="background: rgba(0,0,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
-                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">
-                        ${score}
-                    </div>
-                    <div style="font-size: 1.2rem; color: #333;">
-                        ${message}
-                    </div>
-                </div>
-                <div class="innings-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.9rem; color: #666;">Overs</div>
-                        <div style="font-size: 1.3rem; font-weight: bold;">${Math.floor(matchData.team1.balls / 6)}.${matchData.team1.balls % 6}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 0.9rem; color: #666;">Run Rate</div>
-                        <div style="font-size: 1.3rem; font-weight: bold;">
-                            ${(matchData.team1.score / (matchData.team1.overs + matchData.team1.balls / 6)).toFixed(2)}
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="this.closest('.innings-end-overlay').remove();" style="padding: 12px 30px;">
-                        Continue to Next Innings
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-}
-
-// Manually end innings (button click) - FIXED
-function manualEndInnings() {
-    if (matchData.matchCompleted) {
-        alert('Match is already completed!');
-        return;
-    }
-    
-    const currentInnings = matchData.currentInnings;
-    const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
-    const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
-    
-    if (currentInnings === 1) {
-        if (confirm(`Are you sure you want to end ${battingTeam.name}'s innings? They have scored ${battingTeam.score}/${battingTeam.wickets}`)) {
-            // Set target for second innings - FIXED: Target is battingTeam.score + 1
-            matchData.target = battingTeam.score + 1;
-            
-            // Show innings ended interface (same as automatic end)
-            showInningsEndInterface(
-                `First Innings Over!`,
-                `${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`,
-                `${bowlingTeam.name} needs ${matchData.target} runs to win`
-            );
-            
-            // After delay, switch to second innings
-            setTimeout(() => {
-                // Remove the innings end modal
-                const overlay = document.querySelector('.innings-end-overlay');
-                if (overlay) overlay.remove();
-                
-                // Switch innings
-                matchData.currentInnings = 2;
-                matchData.team1.isBatting = !matchData.team1.isBatting;
-                matchData.team2.isBatting = !matchData.team2.isBatting;
-                
-                // Reset for new innings
-                matchData.currentOver = [];
-                matchData.batsmen = [];
-                matchData.bowler = null;
-                matchData.isFreeHit = false;
-                
-                // Update UI
-                updateScoreboard();
-                
-                // Start second innings team selection
-                showTeamSelectionModal();
-            }, 3000);
-        }
-    } else {
-        // In second innings - ONLY allow manual end if team cannot reach target (declaration/forfeit)
-        if (battingTeam.score >= matchData.target) {
-            alert(`${battingTeam.name} has already reached the target! The match is completed.`);
-            return;
-        }
-        
-        if (confirm(`Are you sure you want to declare innings? ${battingTeam.name} has scored ${battingTeam.score}/${battingTeam.wickets} and needs ${matchData.target - battingTeam.score} more runs to win. This will result in ${bowlingTeam.name} winning.`)) {
-            // Team batting second declares - first innings team wins
-            const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
-            matchData.winningTeam = firstInningsTeam.name;
-            const margin = matchData.target - battingTeam.score - 1;
-            
-            const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
-            
-            addCommentary(`🏆 MATCH RESULT: ${resultText}`);
-            showMatchResult(resultText);
-            
-            matchData.matchCompleted = true;
-            
-            // Disable scoring controls
-            document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
-                btn.disabled = true;
-            });
-        }
-    }
-}
-
-// Debug function to check match state
-function debugMatchState() {
-    console.log('=== MATCH DEBUG INFO ===');
-    console.log('Current Innings:', matchData.currentInnings);
-    console.log('Team1:', matchData.team1.name, 'Score:', matchData.team1.score, 'Wickets:', matchData.team1.wickets, 'Batting:', matchData.team1.isBatting);
-    console.log('Team2:', matchData.team2.name, 'Score:', matchData.team2.score, 'Wickets:', matchData.team2.wickets, 'Batting:', matchData.team2.isBatting);
-    console.log('Target:', matchData.target);
-    console.log('Match Completed:', matchData.matchCompleted);
-    console.log('=======================');
-}
-
-// NEW FUNCTION: Show innings ended interface similar to toss/batsman selection
-function showInningsEndInterface(title, score, message) {
-    const currentInnings = matchData.currentInnings;
     const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
     
     const overlay = document.createElement('div');
@@ -1636,14 +1825,205 @@ function showInningsEndInterface(title, score, message) {
                     </div>
                 </div>
                 <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="this.closest('.innings-end-overlay').remove(); debugMatchState();" style="padding: 12px 30px;">
-                        Continue to Next Innings
+                    <button class="btn btn-primary" onclick="startSecondInnings()" style="padding: 12px 30px;">
+                        Continue to Second Innings
                     </button>
                 </div>
             </div>
         </div>
     `;
     document.body.appendChild(overlay);
+}
+
+// NEW FUNCTION: Start second innings - FIXED to properly switch teams
+function startSecondInnings() {
+    // Remove the overlay
+    const overlay = document.querySelector('.innings-end-overlay');
+    if (overlay) overlay.remove();
+    
+    console.log('Starting second innings...');
+    console.log('Before switch:');
+    console.log(`Team1 batting: ${matchData.team1.isBatting}, Team2 batting: ${matchData.team2.isBatting}`);
+    
+    // Switch innings
+    matchData.currentInnings = 2;
+    
+    // Switch batting status - team that was bowling first will bat second
+    // FIXED: Properly swap batting and bowling status
+    matchData.team1.isBatting = !matchData.team1.isBatting;
+    matchData.team2.isBatting = !matchData.team2.isBatting;
+    
+    // Get the teams after switch
+    const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
+    const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+    
+    console.log('After switch:');
+    console.log(`Team1 batting: ${matchData.team1.isBatting}, Team2 batting: ${matchData.team2.isBatting}`);
+    console.log(`${battingTeam.name} will bat second, needs ${matchData.target} runs to win`);
+    
+    // Reset for new innings
+    matchData.currentOver = [];
+    matchData.batsmen = [];
+    matchData.bowler = null;
+    matchData.isFreeHit = false;
+    
+    // Reset team scores for second innings batting team only
+    battingTeam.score = 0;
+    battingTeam.wickets = 0;
+    battingTeam.overs = 0;
+    battingTeam.balls = 0;
+    
+    // Reset bowling team's over count for second innings
+    bowlingTeam.overs = 0;
+    bowlingTeam.balls = 0;
+    
+    // Update UI to show second innings
+    updateScoreboard();
+    
+    // Add commentary
+    addCommentary(`🏏 SECOND INNINGS: ${battingTeam.name} needs ${matchData.target} runs to win`);
+    addCommentary(`🏃‍♂️‍➡️ ${bowlingTeam.name} will bowl first in the second innings`);
+    
+    // Start second innings team selection after a short delay
+    setTimeout(() => {
+        showTeamSelectionModal();
+    }, 1000);
+}
+
+// Manually end innings (button click) - FIXED
+function manualEndInnings() {
+    if (matchData.matchCompleted) {
+        alert('Match is already completed!');
+        return;
+    }
+    
+    const currentInnings = matchData.currentInnings;
+    const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
+    const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+    
+    if (currentInnings === 1) {
+        // In first innings - manually end the innings
+        if (confirm(`Are you sure you want to end ${battingTeam.name}'s innings? They have scored ${battingTeam.score}/${battingTeam.wickets}`)) {
+            // Set target for second innings
+            matchData.target = battingTeam.score + 1;
+            
+            // FIXED: Use bowlingTeam as the team that will bat second
+            const battingSecondTeam = bowlingTeam;
+            
+            // Show innings ended interface
+            showInningsEndInterface(
+                `First Innings Over!`,
+                `${battingTeam.name}: ${battingTeam.score}/${battingTeam.wickets}`,
+                `${battingSecondTeam.name} needs ${matchData.target} runs to win`
+            );
+            
+            // Add commentary
+            addCommentary(`⏹️ First innings ended manually! ${battingTeam.name} scores ${battingTeam.score}/${battingTeam.wickets}`);
+            addCommentary(`🎯 Target: ${battingSecondTeam.name} needs ${matchData.target} runs to win`);
+        }
+    } else {
+        // In second innings - check if we can end the match
+        if (battingTeam.score >= matchData.target) {
+            // Team has already reached target, complete match
+            completeMatch();
+            return;
+        }
+        
+        if (battingTeam.wickets >= 10) {
+            // All out, complete match
+            addCommentary(`All out! ${battingTeam.name} scored ${battingTeam.score}/${battingTeam.wickets}`);
+            setTimeout(() => {
+                // Team batting second is all out - first innings team wins
+                const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+                matchData.winningTeam = firstInningsTeam.name;
+                const margin = matchData.target - battingTeam.score - 1;
+                
+                const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
+                showMatchResult(resultText);
+            }, 1000);
+            return;
+        }
+        
+        // In second innings with wickets in hand - declaration or forfeit
+        if (confirm(`Are you sure you want to declare innings? ${battingTeam.name} has scored ${battingTeam.score}/${battingTeam.wickets} and needs ${matchData.target - battingTeam.score} more runs to win. This will result in ${bowlingTeam.name} winning.`)) {
+            // Team batting second declares - first innings team wins
+            const firstInningsTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+            matchData.winningTeam = firstInningsTeam.name;
+            const margin = matchData.target - battingTeam.score - 1;
+            
+            const resultText = `${matchData.winningTeam} wins by ${margin} runs!`;
+            
+            addCommentary(`🏆 MATCH RESULT: ${resultText}`);
+            showMatchResult(resultText);
+            
+            // Disable scoring controls
+            document.querySelectorAll('.scoring-controls .btn').forEach(btn => {
+                btn.disabled = true;
+            });
+        }
+    }
+}
+
+// Debug function to check match state
+function debugMatchState() {
+    console.log('=== MATCH DEBUG INFO ===');
+    console.log('Current Innings:', matchData.currentInnings);
+    console.log('Team1:', matchData.team1.name, 'Score:', matchData.team1.score, 'Wickets:', matchData.team1.wickets, 'Batting:', matchData.team1.isBatting);
+    console.log('Team2:', matchData.team2.name, 'Score:', matchData.team2.score, 'Wickets:', matchData.team2.wickets, 'Batting:', matchData.team2.isBatting);
+    console.log('Target:', matchData.target);
+    console.log('Match Completed:', matchData.matchCompleted);
+    console.log('=======================');
+}
+
+// FIXED: Show innings ended interface with proper button functionality
+function showInningsEndInterface(title, score, message) {
+    const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
+    const bowlingTeam = matchData.team1.isBatting ? matchData.team2 : matchData.team1;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'innings-end-overlay';
+    overlay.innerHTML = `
+        <div class="innings-end-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+            <div class="modal-content" style="background: white; border-radius: 15px; max-width: 500px; width: 90%;">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--vibrant-forest)); color: white; padding: 20px 25px; border-radius: 15px 15px 0 0;">
+                    <h2 style="margin: 0;">${title}</h2>
+                </div>
+                <div class="modal-body" style="padding: 30px; text-align: center;">
+                    <div class="score-summary" style="background: rgba(0,0,0,0.1); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">
+                            ${score}
+                        </div>
+                        <div style="font-size: 1.2rem; color: #333;">
+                            ${message}
+                        </div>
+                    </div>
+                    <div class="innings-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.9rem; color: #666;">Overs</div>
+                            <div style="font-size: 1.3rem; font-weight: bold;">${Math.floor(battingTeam.overs)}.${battingTeam.balls}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.9rem; color: #666;">Run Rate</div>
+                            <div style="font-size: 1.3rem; font-weight: bold;">
+                                ${(battingTeam.score / (battingTeam.overs + battingTeam.balls / 6)).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+                        <button class="btn btn-primary" id="startSecondInningsBtn" style="padding: 12px 30px; font-size: 1.1rem;">
+                            Continue to Second Innings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Add event listener to the button
+    document.getElementById('startSecondInningsBtn').addEventListener('click', function() {
+        startSecondInnings();
+    });
 }
 
 // Show target display after first innings
@@ -1678,6 +2058,7 @@ function showTargetDisplay() {
 }
 
 // Show match result - FIXED TO SHOW PROPER INTERFACE
+// Show match result - MODIFIED to include End Match button
 function showMatchResult(resultText) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -1706,9 +2087,12 @@ function showMatchResult(resultText) {
                         <div style="text-align: left;">${matchData.team2.score}/${matchData.team2.wickets}</div>
                     </div>
                 </div>
-                <div class="modal-actions" style="justify-content: center; margin-top: 25px;">
-                    <button class="btn btn-primary" onclick="this.closest('.modal').remove(); location.reload();" style="padding: 15px 40px; font-size: 1.2rem; background: rgba(255,215,0,0.9); color: #8B6914; border: none; border-radius: 25px; font-weight: bold;">
-                        Start New Match
+                <div class="modal-actions" style="justify-content: center; margin-top: 25px; display: flex; flex-direction: column; gap: 15px;">
+                    <button class="btn btn-primary" onclick="updateMatchAndRedirect()" style="padding: 15px 40px; font-size: 1.2rem; background: rgba(34, 197, 94, 0.9); color: white; border: none; border-radius: 25px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span>✅</span> End Match & Update
+                    </button>
+                    <button class="btn btn-primary" onclick="this.closest('.modal').remove(); location.reload();" style="padding: 15px 40px; font-size: 1.2rem; background: rgba(255,215,0,0.9); color: #8B6914; border: none; border-radius: 25px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span>🔄</span> Start New Match
                     </button>
                 </div>
             </div>
@@ -1726,6 +2110,191 @@ function showMatchResult(resultText) {
         if (reqElement) reqElement.textContent = '-';
         if (ballsElement) ballsElement.textContent = '-';
     }, 100);
+}
+
+// UPDATED: Update match status and redirect to matches.html
+async function updateMatchAndRedirect() {
+    try {
+        const matchId = new URLSearchParams(window.location.search).get('matchId');
+        const token = localStorage.getItem('ctms_token');
+        
+        if (!matchId) {
+            alert('Match ID not found. Redirecting to matches page...');
+            window.location.href = 'matches.html';
+            return;
+        }
+        
+        // Prepare match completion data
+        const matchCompletionData = {
+            status: 'completed',
+            team1_score: matchData.team1.score,
+            team1_wickets: matchData.team1.wickets,
+            team2_score: matchData.team2.score,
+            team2_wickets: matchData.team2.wickets,
+            winner_name: matchData.winningTeam,
+            result_summary: getWinMarginText(),
+            team1: matchData.team1.name,
+            team2: matchData.team2.name,
+            venue: document.getElementById('matchVenue')?.textContent || 'Unknown Venue',
+            matchType: 'group'
+        };
+        
+        console.log('📤 Sending match completion data:', matchCompletionData);
+        
+        // Show loading state on button
+        const endMatchBtn = document.querySelector('.btn-primary[onclick*="updateMatchAndRedirect"]');
+        if (endMatchBtn) {
+            endMatchBtn.innerHTML = '<span>⏳</span> Updating Match...';
+            endMatchBtn.disabled = true;
+            endMatchBtn.onclick = null; // Remove onclick to prevent double clicks
+        }
+        
+        // Try the completion endpoint first
+        try {
+            const response = await fetch(`http://localhost:5000/api/matches/${matchId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(matchCompletionData)
+            });
+            
+            if (response.ok) {
+                const updatedMatch = await response.json();
+                console.log('✅ Match completed successfully:', updatedMatch);
+                
+                // Show success message
+                showSuccessMessage('Match completed successfully! Redirecting...');
+                
+                // Short delay before redirect
+                setTimeout(() => {
+                    window.location.href = 'matches.html';
+                }, 1500);
+                return;
+            } else {
+                console.log('⚠️ Completion endpoint returned error, trying regular update...');
+            }
+        } catch (endpointError) {
+            console.log('⚠️ Completion endpoint failed, trying regular update:', endpointError);
+        }
+        
+        // If completion endpoint fails, try the regular PUT endpoint
+        const putData = {
+            team1: matchData.team1.name,
+            team2: matchData.team2.name,
+            matchDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            venue: document.getElementById('matchVenue')?.textContent || 'Unknown Venue',
+            matchType: 'group',
+            status: 'completed',
+            team1_score: matchData.team1.score,
+            team1_wickets: matchData.team1.wickets,
+            team2_score: matchData.team2.score,
+            team2_wickets: matchData.team2.wickets,
+            winner_name: matchData.winningTeam
+        };
+        
+        const putResponse = await fetch(`http://localhost:5000/api/matches/${matchId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putData)
+        });
+        
+        if (putResponse.ok) {
+            console.log('✅ Match updated via PUT endpoint');
+            showSuccessMessage('Match updated successfully! Redirecting...');
+            
+            setTimeout(() => {
+                window.location.href = 'matches.html';
+            }, 1500);
+        } else {
+            const errorText = await putResponse.text();
+            console.error('❌ PUT endpoint failed:', errorText);
+            throw new Error('Both update methods failed');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error updating match:', error);
+        
+        // Restore button
+        const endMatchBtn = document.querySelector('.btn-primary[onclick*="updateMatchAndRedirect"]');
+        if (endMatchBtn) {
+            endMatchBtn.innerHTML = '<span>✅</span> End Match & Update';
+            endMatchBtn.disabled = false;
+            endMatchBtn.onclick = updateMatchAndRedirect;
+        }
+        
+        // Show error but still redirect after delay
+        showErrorMessage('Error updating match. Redirecting to matches...');
+        
+        // Still redirect even if API fails
+        setTimeout(() => {
+            window.location.href = 'matches.html';
+        }, 3000);
+    }
+}
+
+// NEW FUNCTION: Get win margin text
+function getWinMarginText() {
+    if (matchData.currentInnings === 2) {
+        // Second innings completed
+        const battingTeam = matchData.team1.isBatting ? matchData.team1 : matchData.team2;
+        const wicketsLeft = 10 - battingTeam.wickets;
+        return `${matchData.winningTeam} wins by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`;
+    } else {
+        // First innings team wins (team batting second got out)
+        const margin = matchData.target - (matchData.team1.isBatting ? matchData.team2.score : matchData.team1.score) - 1;
+        return `${matchData.winningTeam} wins by ${margin} runs`;
+    }
+}
+
+// NEW FUNCTION: Show success message
+function showSuccessMessage(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-message success';
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// NEW FUNCTION: Show error message
+function showErrorMessage(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast-message error';
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 }
 
 // Update scoreboard UI with target display - FIXED BATTING TEAM DISPLAY
@@ -1757,7 +2326,7 @@ function updateScoreboard() {
         
         // Update target display
         const targetElement = document.getElementById('targetDisplay') || createTargetDisplay();
-        targetElement.textContent = `Target: ${matchData.target}`;
+        targetElement.textContent = `Target: ${matchData.target} (Req: ${runsNeeded > 0 ? runsNeeded : 0} runs)`;
         targetElement.style.display = 'block';
         
         // Check if target is achieved
@@ -2775,6 +3344,7 @@ const strikethroughCSS = `
     border-left-color: #e74c3c !important;
 }
 `;
+
 // Inject strikethrough CSS
 const strikeStyle = document.createElement('style');
 strikeStyle.textContent = strikethroughCSS;
