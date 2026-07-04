@@ -81,60 +81,19 @@ class MatchManager {
     }
 
     async loadMatches() {
-    this.showLoading(true);
-    try {
-        // First try to load matches with detailed information
-        let matches;
+        this.showLoading(true);
         try {
-            matches = await this.apiRequest('/matches/details');
+            const matches = await this.apiRequest('/matches');
+            this.matches = matches;
+            this.filteredMatches = [...matches];
+            this.renderMatches();
+            this.showLoading(false);
         } catch (error) {
-            console.log('⚠️ Detailed matches endpoint not available, using regular endpoint');
-            matches = await this.apiRequest('/matches');
+            console.error('Error loading matches:', error);
+            this.showError('Failed to load matches');
+            this.showLoading(false);
         }
-        
-        this.matches = matches;
-        this.filteredMatches = [...matches];
-        
-        // If matches have scores but no winner_name, calculate winner from scores
-        this.matches = this.matches.map(match => {
-            if (match.match_status === 'completed') {
-                // Ensure scores are numbers
-                const team1Score = parseInt(match.team1_score) || 0;
-                const team2Score = parseInt(match.team2_score) || 0;
-                
-                // If no winner_name but we have scores, determine winner
-                if (!match.winner_name && (team1Score > 0 || team2Score > 0)) {
-                    if (team1Score > team2Score) {
-                        match.winner_name = match.team1_name || 'Team 1';
-                    } else if (team2Score > team1Score) {
-                        match.winner_name = match.team2_name || 'Team 2';
-                    } else {
-                        match.winner_name = 'Match Tied';
-                    }
-                    
-                    // Create result summary if not exists
-                    if (!match.result_summary) {
-                        if (team1Score > team2Score) {
-                            match.result_summary = `${match.team1_name || 'Team 1'} won by ${team1Score - team2Score} runs`;
-                        } else if (team2Score > team1Score) {
-                            match.result_summary = `${match.team2_name || 'Team 2'} won by ${team2Score - team1Score} runs`;
-                        } else {
-                            match.result_summary = 'Match ended in a tie';
-                        }
-                    }
-                }
-            }
-            return match;
-        });
-        
-        this.renderMatches();
-        this.showLoading(false);
-    } catch (error) {
-        console.error('Error loading matches:', error);
-        this.showError('Failed to load matches');
-        this.showLoading(false);
     }
-}
 
     populateTournamentSelects() {
         const tournamentSelect = document.getElementById('tournamentSelect');
@@ -376,180 +335,110 @@ class MatchManager {
     }
 
     createMatchCard(match) {
-    const card = document.createElement('div');
-    card.className = `match-card ${match.match_status}`;
-    
-    const team1 = this.teams.find(t => t.team_id == match.team1_id);
-    const team2 = this.teams.find(t => t.team_id == match.team2_id);
-    const tournament = this.tournaments.find(t => t.tournament_id == match.tournament_id);
-    
-    const team1Name = team1 ? team1.team_name : (match.team1_name || 'Team 1');
-    const team2Name = team2 ? team2.team_name : (match.team2_name || 'Team 2');
-    const tournamentName = tournament ? tournament.tournament_name : (match.tournament_name || 'No Tournament');
-    
-    const team1Abbr = this.getTeamAbbreviation(team1Name);
-    const team2Abbr = this.getTeamAbbreviation(team2Name);
-    
-    const isLive = match.match_status === 'ongoing';
-    const isCompleted = match.match_status === 'completed';
-    const isScheduled = match.match_status === 'scheduled';
-    
-    // Parse scores from VARCHAR strings (e.g., "150/5" or "150")
-    const team1ScoreStr = match.team1_score || '0';
-    const team2ScoreStr = match.team2_score || '0';
-    
-    // Parse score function
-    const parseScore = (scoreStr) => {
-        if (!scoreStr) return { runs: 0, wickets: 0 };
+        const card = document.createElement('div');
+        card.className = `match-card ${match.match_status}`;
         
-        // If score is like "150/5"
-        if (scoreStr.includes('/')) {
-            const parts = scoreStr.split('/');
-            return {
-                runs: parseInt(parts[0]) || 0,
-                wickets: parseInt(parts[1]) || 0
-            };
-        }
+        const team1 = this.teams.find(t => t.team_id == match.team1_id);
+        const team2 = this.teams.find(t => t.team_id == match.team2_id);
+        const tournament = this.tournaments.find(t => t.tournament_id == match.tournament_id);
         
-        // If just a number
-        const runs = parseInt(scoreStr);
-        return {
-            runs: isNaN(runs) ? 0 : runs,
-            wickets: 0  // Default wickets since column doesn't exist
-        };
-    };
-    
-    const team1Score = parseScore(team1ScoreStr);
-    const team2Score = parseScore(team2ScoreStr);
-    
-    // Determine winner
-    let winnerTeamName = '';
-    let resultSummary = match.result_summary || '';
-    
-    if (isCompleted) {
-        // First check if winner info is explicitly provided
-        if (match.winner_name) {
-            winnerTeamName = match.winner_name;
-        } else if (match.winner_team_name) {
-            winnerTeamName = match.winner_team_name;
-        } 
-        // If not, determine from scores
-        else if (team1Score.runs > team2Score.runs) {
-            winnerTeamName = team1Name;
-            resultSummary = resultSummary || `${team1Name} won by ${team1Score.runs - team2Score.runs} runs`;
-        } else if (team2Score.runs > team1Score.runs) {
-            winnerTeamName = team2Name;
-            resultSummary = resultSummary || `${team2Name} won by ${team2Score.runs - team1Score.runs} runs`;
-        } else if (team1Score.wickets < team2Score.wickets) {
-            winnerTeamName = team1Name;
-            resultSummary = resultSummary || `${team1Name} won by ${10 - team1Score.wickets} wickets`;
-        } else if (team2Score.wickets < team1Score.wickets) {
-            winnerTeamName = team2Name;
-            resultSummary = resultSummary || `${team2Name} won by ${10 - team2Score.wickets} wickets`;
-        } else if (team1Score.runs === team2Score.runs && team1Score.runs > 0) {
-            winnerTeamName = 'Match Tied';
-            resultSummary = resultSummary || 'Match ended in a tie';
-        }
+        const team1Name = team1 ? team1.team_name : 'Team 1';
+        const team2Name = team2 ? team2.team_name : 'Team 2';
+        const tournamentName = tournament ? tournament.tournament_name : 'No Tournament';
+        
+        const team1Abbr = this.getTeamAbbreviation(team1Name);
+        const team2Abbr = this.getTeamAbbreviation(team2Name);
+        
+        const isLive = match.match_status === 'ongoing';
+        const isCompleted = match.match_status === 'completed';
+        const isScheduled = match.match_status === 'scheduled';
+        
+        // Handle missing columns gracefully
+        const team1Score = match.team1_score !== undefined ? match.team1_score : '0';
+        const team2Score = match.team2_score !== undefined ? match.team2_score : '0';
+        const team1Wickets = match.team1_wickets !== undefined ? match.team1_wickets : '0';
+        const team2Wickets = match.team2_wickets !== undefined ? match.team2_wickets : '0';
+        const winnerName = match.winner_name || '';
+        const manOfMatch = match.man_of_the_match || '';
+        
+        card.innerHTML = `
+            <div class="match-header">
+                <div class="match-tournament">${tournamentName}</div>
+                <div class="match-type">${this.formatMatchType(match.match_type)}</div>
+            </div>
+            
+            <div class="match-teams">
+                <div class="team">
+                    <div class="team-logo ${team1Abbr}"></div>
+                    <div class="team-name">${team1Name}</div>
+                    ${isCompleted ? `<div class="team-score">${team1Score}/${team1Wickets}</div>` : ''}
+                </div>
+                
+                <div class="vs-container">
+                    <div class="vs">VS</div>
+                    <div class="match-status status-${match.match_status}">
+                        ${isLive ? '<span class="live-indicator"><span class="live-dot"></span> LIVE</span>' : match.match_status}
+                    </div>
+                </div>
+                
+                <div class="team">
+                    <div class="team-logo ${team2Abbr}"></div>
+                    <div class="team-name">${team2Name}</div>
+                    ${isCompleted ? `<div class="team-score">${team2Score}/${team2Wickets}</div>` : ''}
+                </div>
+            </div>
+            
+            ${isCompleted && winnerName ? `
+                <div class="match-result winner">
+                    🏆 ${winnerName} won the match
+                    ${manOfMatch ? `<br><small>Man of the Match: ${manOfMatch}</small>` : ''}
+                </div>
+            ` : ''}
+            
+            <div class="match-info">
+                <div class="match-info-item">
+                    <i>📅</i>
+                    <span>${this.formatMatchDate(match.match_date)}</span>
+                </div>
+                <div class="match-info-item">
+                    <i>📍</i>
+                    <span>${match.venue || 'TBD'}</span>
+                </div>
+                <div class="match-info-item">
+                    <i>⏰</i>
+                    <span>${this.formatMatchTime(match.match_date)}</span>
+                </div>
+                <div class="match-info-item">
+                    <i>🏆</i>
+                    <span>${match.match_type || 'Group Stage'}</span>
+                </div>
+            </div>
+            
+            <div class="match-actions">
+                ${isLive ? `
+                    <button class="btn btn-primary" onclick="matchManager.startLiveScoring(${match.match_id})">
+                        Live Scoring
+                    </button>
+                ` : ''}
+                
+                ${isScheduled ? `
+                    <button class="btn btn-secondary" onclick="matchManager.startMatch(${match.match_id})">
+                        Start Match
+                    </button>
+                ` : ''}
+                
+                <button class="btn btn-outline" onclick="matchManager.editMatch('${match.match_id}')">
+                    Edit
+                </button>
+                
+                <button class="btn btn-outline" onclick="matchManager.deleteMatch('${match.match_id}')">
+                    Delete
+                </button>
+            </div>
+        `;
+        
+        return card;
     }
-    
-    const manOfMatch = match.man_of_the_match || match.man_of_match_name || '';
-    
-    card.innerHTML = `
-        <div class="match-header">
-            <div class="match-tournament">${tournamentName}</div>
-            <div class="match-type">${this.formatMatchType(match.match_type)}</div>
-            <div class="match-status status-${match.match_status}">
-                ${isLive ? '<span class="live-indicator"><span class="live-dot"></span> LIVE</span>' : match.match_status}
-            </div>
-        </div>
-        
-        <div class="match-teams">
-            <div class="team">
-                <div class="team-logo ${team1Abbr}"></div>
-                <div class="team-name">${team1Name}</div>
-                ${isCompleted ? `<div class="team-score">${team1Score.runs}/${team1Score.wickets}</div>` : ''}
-            </div>
-            
-            <div class="vs-container">
-                <div class="vs">VS</div>
-                ${isCompleted ? `<div class="match-status completed">COMPLETED</div>` : ''}
-            </div>
-            
-            <div class="team">
-                <div class="team-logo ${team2Abbr}"></div>
-                <div class="team-name">${team2Name}</div>
-                ${isCompleted ? `<div class="team-score">${team2Score.runs}/${team2Score.wickets}</div>` : ''}
-            </div>
-        </div>
-        
-        ${isCompleted && (winnerTeamName || team1Score.runs > 0 || team2Score.runs > 0) ? `
-            <div class="match-result">
-                ${winnerTeamName && winnerTeamName !== 'Match Tied' ? `
-                    <div class="winner-banner" style="background: linear-gradient(135deg, #FFD700, #FFA500); color: #8B6914; padding: 10px 15px; border-radius: 8px; margin: 15px 0; font-weight: bold; text-align: center;">
-                        🏆 ${winnerTeamName} WON! 🏆
-                    </div>
-                ` : winnerTeamName === 'Match Tied' ? `
-                    <div class="winner-banner" style="background: linear-gradient(135deg, #CCCCCC, #999999); color: #333; padding: 10px 15px; border-radius: 8px; margin: 15px 0; font-weight: bold; text-align: center;">
-                        🤝 MATCH TIED! 🤝
-                    </div>
-                ` : ''}
-                ${resultSummary ? `
-                    <div class="result-summary" style="text-align: center; margin-bottom: 10px; font-weight: 500; color: #333;">
-                        ${resultSummary}
-                    </div>
-                ` : ''}
-                ${manOfMatch ? `
-                    <div class="man-of-match" style="text-align: center; font-size: 0.9rem; color: #666;">
-                        <i>👑 Man of the Match:</i> ${manOfMatch}
-                    </div>
-                ` : ''}
-            </div>
-        ` : ''}
-        
-        <div class="match-info">
-            <div class="match-info-item">
-                <i>📅</i>
-                <span>${this.formatMatchDate(match.match_date)}</span>
-            </div>
-            <div class="match-info-item">
-                <i>📍</i>
-                <span>${match.venue || 'TBD'}</span>
-            </div>
-            <div class="match-info-item">
-                <i>⏰</i>
-                <span>${this.formatMatchTime(match.match_date)}</span>
-            </div>
-            <div class="match-info-item">
-                <i>🏆</i>
-                <span>${match.match_type || 'Group Stage'}</span>
-            </div>
-        </div>
-        
-        <div class="match-actions">
-            ${isLive ? `
-                <button class="btn btn-primary" onclick="matchManager.startLiveScoring(${match.match_id})">
-                    Live Scoring
-                </button>
-            ` : ''}
-            
-            ${isScheduled ? `
-                <button class="btn btn-secondary" onclick="matchManager.startMatch(${match.match_id})">
-                    Start Match
-                </button>
-            ` : ''}
-            
-            <button class="btn btn-outline" onclick="matchManager.editMatch('${match.match_id}')">
-                Edit
-            </button>
-            
-            <button class="btn btn-outline" onclick="matchManager.deleteMatch('${match.match_id}')">
-                Delete
-            </button>
-        </div>
-    `;
-    
-    return card;
-}
 
     filterMatches() {
         const tournamentFilter = document.getElementById('tournamentFilter').value;

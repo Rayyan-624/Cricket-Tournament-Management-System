@@ -224,136 +224,16 @@ class DashboardManager {
         `).join('');
     }
 
-    // Load recent matches from API - Updated to include completed matches
-async loadRecentMatches() {
-    try {
-        const allMatches = await this.getRecentMatches();
-        
-        // Separate into upcoming and recent completed
-        const now = new Date();
-        const upcomingMatches = allMatches.filter(match => {
-            const matchDate = new Date(match.match_date);
-            return matchDate >= now && match.match_status !== 'completed';
-        }).slice(0, 2);
-        
-        const recentCompleted = allMatches.filter(match => {
-            return match.match_status === 'completed';
-        }).sort((a, b) => new Date(b.match_date) - new Date(a.match_date))
-          .slice(0, 2);
-        
-        // Show upcoming if available, otherwise show recent completed
-        this.recentMatches = upcomingMatches.length > 0 ? upcomingMatches : recentCompleted;
-        this.renderRecentMatches();
-    } catch (error) {
-        console.error('Error loading recent matches:', error);
-        this.showMatchesError();
-    }
-}
-
-// Get recent matches from API
-async getRecentMatches() {
-    try {
-        const matches = await this.apiRequest('/matches');
-        return matches || [];
-    } catch (error) {
-        console.error('Error fetching matches:', error);
-        return [];
-    }
-}
-
-// Render recent matches - Updated to handle completed matches
-renderRecentMatches() {
-    const container = document.getElementById('recentMatches');
-    if (!container) return;
-
-    if (this.recentMatches.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🏐</div>
-                <h3>No Recent Matches</h3>
-                <p>Matches will appear here once scheduled or completed</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = this.recentMatches.map(match => {
-        const matchDate = new Date(match.match_date);
-        const isCompleted = match.match_status === 'completed';
-        const isUpcoming = match.match_status === 'scheduled' || match.match_status === 'upcoming';
-        const isLive = match.match_status === 'ongoing';
-        
-        let statusClass = '';
-        let statusText = '';
-        let scoreInfo = '';
-        
-        if (isCompleted) {
-            statusClass = 'completed';
-            statusText = 'COMPLETED';
-            
-            // Show scores for completed matches
-            const team1Score = match.team1_score || 0;
-            const team2Score = match.team2_score || 0;
-            
-            if (team1Score > 0 || team2Score > 0) {
-                scoreInfo = `
-                    <div class="match-scores">
-                        <span class="score">${match.team1_name}: ${team1Score}</span>
-                        <span class="score">${match.team2_name}: ${team2Score}</span>
-                    </div>
-                `;
-            }
-            
-        } else if (isLive) {
-            statusClass = 'ongoing';
-            statusText = 'LIVE';
-        } else {
-            statusClass = 'upcoming';
-            statusText = 'UPCOMING';
+    // Load recent matches from API
+    async loadRecentMatches() {
+        try {
+            this.recentMatches = await this.getUpcomingMatches();
+            this.renderRecentMatches();
+        } catch (error) {
+            console.error('Error loading recent matches:', error);
+            this.showMatchesError();
         }
-        
-        return `
-            <div class="match-card ${statusClass}" data-id="${match.match_id}">
-                <div class="match-header">
-                    <span class="match-status ${statusClass}">
-                        ${statusText}
-                    </span>
-                    <span class="match-time">${this.formatMatchDate(match.match_date)}</span>
-                </div>
-                <div class="match-teams">
-                    <div class="team">
-                        <div class="team-logo ${this.getTeamAbbreviation(match.team1_name)}"></div>
-                        <span class="team-name">${match.team1_name}</span>
-                        ${isCompleted && match.winner_team_id === match.team1_id ? 
-                          '<span class="winner-badge">🏆</span>' : ''}
-                    </div>
-                    <div class="vs">VS</div>
-                    <div class="team">
-                        <div class="team-logo ${this.getTeamAbbreviation(match.team2_name)}"></div>
-                        <span class="team-name">${match.team2_name}</span>
-                        ${isCompleted && match.winner_team_id === match.team2_id ? 
-                          '<span class="winner-badge">🏆</span>' : ''}
-                    </div>
-                </div>
-                ${scoreInfo}
-                <div class="match-info">
-                    <p class="match-venue">
-                        <i class="venue-icon">🏟️</i>
-                        ${match.venue || 'Venue TBD'}
-                    </p>
-                    ${isCompleted && match.result_summary ? 
-                      `<p class="match-result">${match.result_summary}</p>` : ''}
-                </div>
-                <div class="match-actions">
-                    <button class="btn ${isCompleted ? 'btn-secondary' : isLive ? 'btn-primary' : 'btn-secondary'}" 
-                            onclick="window.location.href='match-detail.html?id=${match.match_id}'">
-                        ${isCompleted ? 'View Result' : isLive ? 'Live Score' : 'View Details'}
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
+    }
 
     // Get upcoming matches
     async getUpcomingMatches() {
@@ -604,27 +484,9 @@ dashboardStyle.textContent = `
         100% { opacity: 1; }
     }
     
-    @keyframes slideInUp {
-        from { transform: translateY(100%); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes slideOutDown {
-        from { transform: translateY(0); opacity: 1; }
-        to { transform: translateY(100%); opacity: 0; }
-    }
-    
     .match-status.ongoing {
         background: #e74c3c;
         animation: pulse 1.5s infinite;
-    }
-    
-    .match-status.completed {
-        background: #27ae60;
-    }
-    
-    .match-status.upcoming {
-        background: #f39c12;
     }
     
     .stat-card, .tournament-item, .match-card {
@@ -653,108 +515,6 @@ dashboardStyle.textContent = `
         margin: 0 0 20px 0;
         color: #666;
         font-size: 0.9rem;
-    }
-    
-    .match-card.completed {
-        border-left: 4px solid #27ae60;
-    }
-    
-    .match-scores {
-        display: flex;
-        justify-content: space-around;
-        margin: 10px 0;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-    
-    .match-scores .score {
-        font-weight: bold;
-        color: #2c3e50;
-    }
-    
-    .match-result {
-        font-style: italic;
-        color: #7f8c8d;
-        margin-top: 5px;
-        font-size: 0.9rem;
-    }
-    
-    .winner-badge {
-        margin-left: 5px;
-        font-size: 1.2rem;
-    }
-    
-    .team-logo {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #3498db, #2980b9);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin: 0 auto 5px auto;
-    }
-    
-    /* For teams page */
-    .team-card .team-logo {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #4CAF50, #45a049);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-right: 15px;
-    }
-    
-    .team-info p {
-        margin: 5px 0;
-        font-size: 0.9rem;
-    }
-    
-    .team-info p strong {
-        color: #2c3e50;
-    }
-    
-    .new-team {
-        animation: highlightPulse 2s ease;
-    }
-    
-    @keyframes highlightPulse {
-        0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-        50% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
-    }
-    
-    /* Toast styles for dashboard */
-    .dashboard-toast {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        border-radius: 8px;
-        z-index: 1000;
-        animation: slideInRight 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        color: white;
-    }
-    
-    .toast-error {
-        background: #e74c3c;
-    }
-    
-    .toast-success {
-        background: #2ecc71;
-    }
-    
-    .toast-info {
-        background: #3498db;
     }
 `;
 document.head.appendChild(dashboardStyle);
